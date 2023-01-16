@@ -45,27 +45,3 @@ class MLP(Module):
 
     def parameters(self):
         return [p for l in self.layers for p in l.parameters()]
-
-xs = [
-    [2.0, 3.0, -1.0],
-    [3.0, -1.0, 0.5],
-    [0.5, 1.0, 1.0],
-    [1.0, 1.0, -1.0]
-]
-ys = [1.0, -1.0, -1.0, 1.0]
-print(f"ys: {ys}")
-
-learning_rate = 0.01
-iters = 1000
-mlp = MLP(3, [4,4,1])
-
-for _ in range(iters):
-    mlp.zero_grad()
-    youts = [mlp(x) for x in xs]
-    print(f"youts: {youts}")
-    loss = sum([(y-yout)**2 for y, yout in zip(ys, youts)])
-    loss.backward()
-    print(f"loss: {loss}")
-    params = mlp.parameters()
-    for p in params:
-        p.data += -learning_rate * p.grad
