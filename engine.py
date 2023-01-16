@@ -1,15 +1,15 @@
 import math
 
 class Value:
-    def __init__(self, data, children=(), op=None):
+    def __init__(self, data, prevs=(), op=None):
         self.data = float(data)
-        self.children = children
+        self.prevs = prevs # Stores previous Values which were used to compute the current value (needed for the backwards pass)
         self.grad = 0
         self.op = op
         self._backward = lambda: None
 
     def __repr__(self):
-        return f"Value(data={self.data},grad={self.grad},op={self.op})"
+        return f"Value(data={self.data},grad={self.grad})"
 
     '''
         The chain rule is core to performing the backwards pass
@@ -71,10 +71,11 @@ class Value:
         return out
 
     def tanh(self):
-        exp = math.exp(2*self.data)
-        out = Value((exp-1)/(exp+1), [self], 'tanh')
+        x = self.data
+        t = (math.exp(2*x) - 1) / (math.exp(2*x) + 1)
+        out = Value(t, [self], 'tanh')
         def _backward():
-            self.grad += 1 - (out.data ** 2)
+            self.grad += (1 - t**2) * out.grad
         out._backward = _backward
         return out
 
@@ -87,14 +88,21 @@ class Value:
 
 
     def backward(self):
-        self.grad = 1 # Derivative with respect to yourself is always 1
-        self._backward()
-        children = self.children
-        while len(children) > 0:
-            child = children.pop(0)
-            child._backward()
-            if child.children:
-                children.extend(child.children)
+        # topological order all of the children in the graph
+        topo = []
+        visited = set()
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for prev in v.prevs:
+                    build_topo(prev)
+                topo.append(v)
+        build_topo(self)
+
+        # go one variable at a time and apply the chain rule to get its gradient
+        self.grad = 1
+        for v in reversed(topo):
+            v._backward()
 
 
     # Rewrite operations below to use primitives implemented above

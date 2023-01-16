@@ -16,14 +16,14 @@ class Neuron(Module):
     def __call__(self, x):
         # Implements sum(wi*xi) + b
         activation = sum([xi*wi for xi, wi in zip(self.weights, x)]) + self.b
-        return activation.tanh() if self.nonLin else activation
+        return activation.relu() if self.nonLin else activation
 
     def parameters(self):
         return self.weights + [self.b]
 
 class Layer(Module):
-    def __init__(self, nin, nout):
-        self.neurons = [Neuron(nin) for _ in range(nout)]
+    def __init__(self, nin, nout, **kwargs):
+        self.neurons = [Neuron(nin, **kwargs) for _ in range(nout)]
 
     def __call__(self, x):
         outs = [n(x) for n in self.neurons]
@@ -35,7 +35,8 @@ class Layer(Module):
 class MLP(Module):
     def __init__(self, nin, nouts):
         layer_sizes = [nin] + nouts
-        self.layers = [Layer(layer_sizes[i],layer_sizes[i+1]) for i in range(len(layer_sizes)-1)]
+        # don't constrain last layer to have outputs between 0 and 1
+        self.layers = [Layer(layer_sizes[i],layer_sizes[i+1], nonLin= i!=len(nouts)-1) for i in range(len(nouts))]
 
     def __call__(self, x):
         for layer in self.layers:
@@ -54,25 +55,17 @@ xs = [
 ys = [1.0, -1.0, -1.0, 1.0]
 print(f"ys: {ys}")
 
-learning_rate = 0.1
+learning_rate = 0.01
+iters = 1000
 mlp = MLP(3, [4,4,1])
 
-for _ in range(15):
+for _ in range(iters):
     mlp.zero_grad()
     youts = [mlp(x) for x in xs]
-    # print(f"youts: {youts}")
+    print(f"youts: {youts}")
     loss = sum([(y-yout)**2 for y, yout in zip(ys, youts)])
     loss.backward()
     print(f"loss: {loss}")
     params = mlp.parameters()
     for p in params:
         p.data += -learning_rate * p.grad
-'''
-
-x1 = Value(5)
-x2 = Value(-2)
-out = x1 - x2
-out.backward()
-print(f"x1: {x1}")
-print(f"x2: {x2}")
-'''
